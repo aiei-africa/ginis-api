@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Region {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @unique
+  capital            String
+  zone               String
+  pop2021            Int
+  pop2010            Int
+  areaKm2            Float
+  districtCount      Int
+  tags               String[]
+  districts          District[]
+  constituencies     Constituency[]
+  politicalCharacter PoliticalCharacter[]
+  economicIndicators EconomicIndicator[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@map("regions")
+}
+
+model District {
+  id        Int      @id @default(autoincrement())
+  name      String
+  type      String
+  capital   String?
+  pop2021   Int?
+  region    Region   @relation(fields: [regionId], references: [id])
+  regionId  Int
+  createdAt DateTime @default(now())
+
+  @@map("districts")
+}
+
+model Constituency {
+  id                 Int                  @id @default(autoincrement())
+  name               String
+  region             Region               @relation(fields: [regionId], references: [id])
+  regionId           Int
+  registeredVoters   Int?
+  results            ElectionResult[]
+  politicalCharacter PoliticalCharacter?
+  createdAt          DateTime             @default(now())
+
+  @@unique([name, regionId])
+  @@map("constituencies")
+}
+
+model ElectionResult {
+  id             Int          @id @default(autoincrement())
+  constituency   Constituency @relation(fields: [constituencyId], references: [id])
+  constituencyId Int
+  year           Int
+  candidate      String
+  party          String
+  votes          Int
+  isWinner       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([constituencyId, year])
+  @@map("election_results")
+}
+
+model PoliticalCharacter {
+  id             Int          @id @default(autoincrement())
+  constituency   Constituency @relation(fields: [constituencyId], references: [id])
+  constituencyId Int          @unique
+  region         Region       @relation(fields: [regionId], references: [id])
+  regionId       Int
+  classification String
+  marginHistory  Json?
+  updatedAt      DateTime     @updatedAt
+
+  @@map("political_character")
+}
+
+model Institution {
+  id              Int      @id @default(autoincrement())
+  name            String
+  acronym         String?
+  category1       String
+  category2       String
+  sector          String
+  ministry        String?
+  classification  String
+  hq              String?
+  yearEstablished Int?
+  createdAt       DateTime @default(now())
+
+  @@map("institutions")
+}
+
+model EconomicIndicator {
+  id        Int      @id @default(autoincrement())
+  type      String
+  period    String
+  value     Float
+  unit      String
+  source    String
+  region    Region?  @relation(fields: [regionId], references: [id])
+  regionId  Int?
+  createdAt DateTime @default(now())
+
+  @@index([type, period])
+  @@map("economic_indicators")
+}
+
+model User {
+  id              Int         @id @default(autoincrement())
+  email           String      @unique
+  emailVerifiedAt DateTime?
+  phone           String      @unique
+  phoneVerifiedAt DateTime?
+  passwordHash    String
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime
+  gender          String
+  region          String
+  otpCodes        OtpCode[]
+  accessLogs      AccessLog[]
+  createdAt       DateTime    @default(now())
+
+  @@map("users")
+}
+
+model OtpCode {
+  id         Int       @id @default(autoincrement())
+  user       User      @relation(fields: [userId], references: [id])
+  userId     Int
+  code       String
+  purpose    String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, purpose])
+  @@map("otp_codes")
+}
+
+model AccessLog {
+  id           Int      @id @default(autoincrement())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       Int
+  resourceType String
+  resourceId   String
+  accessedAt   DateTime @default(now())
+
+  @@index([userId])
+  @@map("access_log")
+}
