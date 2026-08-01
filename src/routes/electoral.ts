@@ -23,10 +23,12 @@ interface RegionalRow {
   vote_share: string | null;
 }
 
-interface ConstituencyRow extends RegionalRow {
+interface ConstituencyRow extends Omit<RegionalRow, "region_id" | "region_name"> {
   constituency_id: string;
   constituency_name: string;
   ec_code: string;
+  region_id: string;
+  region_name: string;
   collation_status: string;
   declared_at: string | null;
 }
@@ -49,17 +51,24 @@ router.get("/regional", async (req, res, next) => {
   }
 });
 
-// GET /electoral/constituencies?year=2024&type=PRESIDENTIAL
+// GET /electoral/constituencies?year=2024&type=PRESIDENTIAL&region=Ashanti
 router.get("/constituencies", async (req, res, next) => {
   try {
     const year = Number(req.query.year) || 2024;
     const type = String(req.query.type || "PRESIDENTIAL").toUpperCase();
+    const region = req.query.region ? String(req.query.region) : null;
 
-    const rows = await prisma.$queryRaw<ConstituencyRow[]>`
-      SELECT * FROM ginis.v_constituency_election_results
-      WHERE year = ${year} AND election_type = ${type}
-      ORDER BY constituency_name, votes DESC
-    `;
+    const rows = region
+      ? await prisma.$queryRaw<ConstituencyRow[]>`
+          SELECT * FROM ginis.v_constituency_election_results
+          WHERE year = ${year} AND election_type = ${type} AND region_name = ${region}
+          ORDER BY constituency_name, votes DESC
+        `
+      : await prisma.$queryRaw<ConstituencyRow[]>`
+          SELECT * FROM ginis.v_constituency_election_results
+          WHERE year = ${year} AND election_type = ${type}
+          ORDER BY constituency_name, votes DESC
+        `;
 
     res.json(rows);
   } catch (err) {
